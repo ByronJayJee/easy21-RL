@@ -38,6 +38,7 @@
 #######################################################################
 
 import random as rng
+import numpy as np
 
 # Set seed for debugging, gives reproducible random numbers 
 # rng.seed(a=42)
@@ -45,6 +46,11 @@ import random as rng
 red_prob = 1.0/3.0
 game_outcome = -1 # -1 when in-progrss, 0 when draw, 1 when loss, 2 when win
 reward = -99 #initialize to non-sense number, 0 when draw, -1 when loss, +1 when win
+
+scount = np.zeros((10,21))
+value_func = np.zeros((10,21))
+
+player_history = []
 
 def draw_card():
    card_num = rng.randint(1,10)
@@ -59,17 +65,17 @@ def add_card(pnum,card_num,card_color, red_prob=red_prob):
    else:
       pnum += card_num
       tcolor = 'Black'
-   print('Card drawn: ',tcolor,' ',card_num)
+   #print('Card drawn: ',tcolor,' ',card_num)
    return pnum
 
 def evaluate_game(state, action, game_outcome, reward):
    dnum = state[0]
    pnum = state[1]
-   if(pnum<0) or (pnum>21):
+   if(pnum<=0) or (pnum>21):
       game_outcome = 1
       reward = -1
    
-   if(dnum<0) or (dnum>21):
+   if(dnum<=0) or (dnum>21):
       game_outcome = 2
       reward = 1
 
@@ -93,7 +99,7 @@ def step(state, action):
    # possibly throw error when action not equal to 0 or 1
    dnum = state[0]
    pnum = state[1]
-   print(dnum,pnum,action)
+   #print(dnum,pnum,action)
    
    if(action[1]==1):
       a,b = draw_card()
@@ -119,11 +125,34 @@ def select_action(state,action):
 
    return [dact, pact]
 
+def update_value_func(player_history,reward):
+   hlen = len(player_history)
+   while hlen>0:
+      temp_sa = player_history[-1]
+      temp_s = temp_sa[0]
+      temp_a = temp_sa[1]
+
+      idx_d = player_history[0][0][0] - 1
+      idx_p = temp_s[1]-1
+
+      scount[idx_d,idx_p] += 1
+      vfunc_old = value_func[idx_d,idx_p]
+      vfunc_new = vfunc_old + ((reward - vfunc_old) / scount[idx_d,idx_p])
+      value_func[idx_d,idx_p] = vfunc_new
+
+      #print(scount[idx_d,idx_p])
+      #print(temp_sa)
+      del player_history[-1]
+      hlen = len(player_history)
+
+
 def play_easy21():
-   global game_outcome
-   global reward
+   player_history = []
+   game_outcome = -1 # -1 when in-progrss, 0 when draw, 1 when loss, 2 when win
+   reward = -99 #initialize to non-sense number, 0 when draw, -1 when loss, +1 when win
    pnum=0
    dnum=0
+   ph_flag=0
 
    pact=1
    dact=1
@@ -137,17 +166,26 @@ def play_easy21():
    # Initialize state and action
    state=[dnum,pnum]
    action=[dact,pact]
+   player_history.append([state,[-1,-1]])
    while game_outcome < 0:
       action = select_action(state,action)
       state = step(state,action)
       game_outcome, reward = evaluate_game(state, action, game_outcome, reward)
-      print('state: ',state)
-      print('action: ',action)
-      print('game_outcome: ',game_outcome)
-      print('reward: ',reward)
-      print('\n\n')
-      
+      #print('state: ',state)
+      #print('action: ',action)
+      #print('game_outcome: ',game_outcome)
+      #print('reward: ',reward)
+      #print('\n\n')
+      if(ph_flag==0):
+         player_history.append([state,action])
+      if(action[1]==0):
+         ph_flag=1
 
+   print(player_history)
+   if(action[1]==1):
+      print(player_history)
+      del player_history[-1]
+   return player_history, game_outcome, reward
 
 
 
@@ -161,5 +199,11 @@ def play_easy21():
 #print(step([10, 17],[1,1]))
 #print(step([10, 17],[1,0]))
 
-play_easy21()
-
+#player_history, game_outcome, reward = play_easy21()
+#print(player_history)
+#print(len(player_history))
+for x in range(0,1000):
+   player_history, game_outcome, reward = play_easy21()
+   update_value_func(player_history,reward)
+print(scount)
+print(value_func)
