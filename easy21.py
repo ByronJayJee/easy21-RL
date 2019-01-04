@@ -39,14 +39,127 @@
 
 import random as rng
 
-# Set seed debugging, gives reproducible random numbers 
-rng.seed(a=42)
+# Set seed for debugging, gives reproducible random numbers 
+# rng.seed(a=42)
+
+red_prob = 1.0/3.0
+game_outcome = -1 # -1 when in-progrss, 0 when draw, 1 when loss, 2 when win
+reward = -99 #initialize to non-sense number, 0 when draw, -1 when loss, +1 when win
 
 def draw_card():
    card_num = rng.randint(1,10)
    card_color = rng.random()
    
-   return card_num, card_color
+   return [card_num, card_color]
 
-a,b = draw_card()
-print(a,b)
+def add_card(pnum,card_num,card_color, red_prob=red_prob):
+   if(card_color<red_prob):
+      pnum -= card_num
+      tcolor = 'Red'
+   else:
+      pnum += card_num
+      tcolor = 'Black'
+   print('Card drawn: ',tcolor,' ',card_num)
+   return pnum
+
+def evaluate_game(state, action, game_outcome, reward):
+   dnum = state[0]
+   pnum = state[1]
+   if(pnum<0) or (pnum>21):
+      game_outcome = 1
+      reward = -1
+   
+   if(dnum<0) or (dnum>21):
+      game_outcome = 2
+      reward = 1
+
+   if(action[0]==0):
+      if (dnum > pnum):
+         game_outcome = 1
+         reward = -1
+      if (dnum < pnum):
+         game_outcome = 2
+         reward = 1
+      if (dnum == pnum):
+         game_outcome = 0
+         reward = 0
+
+   return game_outcome, reward
+   
+
+def step(state, action):
+   # player twist/draw when action==1
+   # player stick when action==0
+   # possibly throw error when action not equal to 0 or 1
+   dnum = state[0]
+   pnum = state[1]
+   print(dnum,pnum,action)
+   
+   if(action[1]==1):
+      a,b = draw_card()
+      pnum = add_card(pnum,a,b)
+      #pnum = draw_card(pnum)
+   
+   if(action[0]==1) and (action[1]==0):
+      a,b = draw_card()
+      dnum = add_card(dnum,a,b)
+
+   return [dnum, pnum]
+
+def select_action(state,action):
+   # assumes action is initialized to [1,1] at start of game
+   dact=action[0]
+   pact=action[1]
+   if(pact==1) and (state[1]>=15):
+      pact=0
+   if(dact==1) and (pact==0):
+       #if (state[0]>=17) or (state[0]>state[1]):
+       if (state[0]>=17): #Dealer only sticks on sums 17 or greater
+          dact=0
+
+   return [dact, pact]
+
+def play_easy21():
+   global game_outcome
+   global reward
+   pnum=0
+   dnum=0
+
+   pact=1
+   dact=1
+
+   a,b = draw_card()
+   pnum = add_card(pnum,a,1.0)
+
+   a,b = draw_card()
+   dnum = add_card(dnum,a,1.0)
+
+   # Initialize state and action
+   state=[dnum,pnum]
+   action=[dact,pact]
+   while game_outcome < 0:
+      action = select_action(state,action)
+      state = step(state,action)
+      game_outcome, reward = evaluate_game(state, action, game_outcome, reward)
+      print('state: ',state)
+      print('action: ',action)
+      print('game_outcome: ',game_outcome)
+      print('reward: ',reward)
+      print('\n\n')
+      
+
+
+
+
+
+
+#pnum=0
+#a,b = draw_card()
+#pnum = add_card(pnum,a,b)
+#print(pnum)
+#print(a,b)
+#print(step([10, 17],[1,1]))
+#print(step([10, 17],[1,0]))
+
+play_easy21()
+
