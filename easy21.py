@@ -34,6 +34,8 @@
 #     bust, then the player wins; otherwise, the outcome – win (reward +1),
 #     lose (reward -1), or draw (reward 0) – is the player with the largest sum.
 #
+# Assignment from: David Silver's Reinforcement Learning Course (Youtube videos)
+#
 # Written by: ByronJayJee
 #######################################################################
 
