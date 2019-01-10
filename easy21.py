@@ -114,7 +114,7 @@ def step(state, action):
 
    return [dnum, pnum]
 
-def select_action(state,action):
+def select_action_naive(state,action):
    # assumes action is initialized to [1,1] at start of game
    dact=action[0]
    pact=action[1]
@@ -170,7 +170,7 @@ def play_easy21():
    action=[dact,pact]
    player_history.append([state,[-1,-1]])
    while game_outcome < 0:
-      action = select_action(state,action)
+      action = select_action_naive(state,action)
       state = step(state,action)
       game_outcome, reward = evaluate_game(state, action, game_outcome, reward)
       #print('state: ',state)
@@ -183,9 +183,9 @@ def play_easy21():
       if(action[1]==0):
          ph_flag=1
 
-   print(player_history)
+   #print(player_history)
    if(action[1]==1):
-      print(player_history)
+      #print(player_history)
       del player_history[-1]
    return player_history, game_outcome, reward
 
@@ -204,8 +204,16 @@ def play_easy21():
 #player_history, game_outcome, reward = play_easy21()
 #print(player_history)
 #print(len(player_history))
+record = np.zeros(3)
 for x in range(0,1000):
    player_history, game_outcome, reward = play_easy21()
    update_value_func(player_history,reward)
-print(scount)
-print(value_func)
+   record[game_outcome] += 1
+#print(scount)
+#print(value_func)
+#print(record)
+
+print("\nEasy21 - Final Record:\n")
+print("Number of Wins: ",record[2])
+print("Number of Losses: ",record[1])
+print("Number of Draws: ",record[0],'\n')
