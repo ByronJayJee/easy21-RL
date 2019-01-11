@@ -41,6 +41,7 @@
 
 import random as rng
 import numpy as np
+from collections import Counter
 
 # Set seed for debugging, gives reproducible random numbers 
 # rng.seed(a=42)
@@ -49,8 +50,12 @@ red_prob = 1.0/3.0
 game_outcome = -1 # -1 when in-progrss, 0 when draw, 1 when loss, 2 when win
 reward = -99 #initialize to non-sense number, 0 when draw, -1 when loss, +1 when win
 
+epsilon = 0.1
+
 scount = np.zeros((10,21))
+sacount = np.zeros((10,21,2))
 value_func = np.zeros((10,21))
+q_func = np.zeros((10,21,2))
 
 player_history = []
 
@@ -114,6 +119,26 @@ def step(state, action):
 
    return [dnum, pnum]
 
+def select_action_mc(state,action,q_func,scount):
+   # implement e-greedy control using monte carlo prediction
+   dact=action[0]
+   pact=action[1]
+   if(pact==1):
+      rand_temp = rng.random()
+      ep_temp = 100
+      epsilon = ep_temp / (ep_temp + scount[state[0]-1,state[1]-1])
+      if(rand_temp > epsilon):
+         sqfunc = q_func[state[0]-1,state[1]-1]
+         pact = np.argmax(sqfunc)
+      if(rand_temp <= epsilon):
+         pact = rng.randint(0,1)
+
+   if(dact==1) and (pact==0):
+      #if (state[0]>=17) or (state[0]>state[1]):
+      if (state[0]>=17): #Dealer only sticks on sums 17 or greater
+         dact=0
+   return [dact, pact]
+
 def select_action_naive(state,action):
    # assumes action is initialized to [1,1] at start of game
    dact=action[0]
@@ -121,11 +146,35 @@ def select_action_naive(state,action):
    if(pact==1) and (state[1]>=15):
       pact=0
    if(dact==1) and (pact==0):
-       #if (state[0]>=17) or (state[0]>state[1]):
-       if (state[0]>=17): #Dealer only sticks on sums 17 or greater
+      #if (state[0]>=17) or (state[0]>state[1]):
+      if (state[0]>=17): #Dealer only sticks on sums 17 or greater
           dact=0
 
    return [dact, pact]
+
+def update_q_func(player_history,reward):
+   hlen = len(player_history)
+   while hlen>0:
+      temp_sa = player_history[-1]
+      temp_s = temp_sa[0]
+      temp_a = temp_sa[1]
+
+      idx_d = player_history[0][0][0] - 1
+      idx_p = temp_s[1]-1
+      pact=temp_a[1]
+
+      scount[idx_d,idx_p] += 1
+      sacount[idx_d,idx_p,pact] += 1
+      qfunc_old = q_func[idx_d,idx_p,pact]
+      qfunc_new = qfunc_old + ((reward - qfunc_old) / sacount[idx_d,idx_p,pact])
+      q_func[idx_d,idx_p,pact] = qfunc_new
+
+      #print(scount[idx_d,idx_p])
+      #print(temp_sa)
+      del player_history[-1]
+      hlen = len(player_history)
+   return q_func, scount, sacount
+
 
 def update_value_func(player_history,reward):
    hlen = len(player_history)
@@ -146,6 +195,7 @@ def update_value_func(player_history,reward):
       #print(temp_sa)
       del player_history[-1]
       hlen = len(player_history)
+   return value_func, scount
 
 
 def play_easy21():
@@ -170,7 +220,8 @@ def play_easy21():
    action=[dact,pact]
    player_history.append([state,[-1,-1]])
    while game_outcome < 0:
-      action = select_action_naive(state,action)
+      #action = select_action_naive(state,action)
+      action = select_action_mc(state,action,q_func,scount)
       state = step(state,action)
       game_outcome, reward = evaluate_game(state, action, game_outcome, reward)
       #print('state: ',state)
@@ -204,16 +255,28 @@ def play_easy21():
 #player_history, game_outcome, reward = play_easy21()
 #print(player_history)
 #print(len(player_history))
+
 record = np.zeros(3)
-for x in range(0,1000):
+outcome_history = []
+count_lag = 500
+
+for x in range(0,100000):
    player_history, game_outcome, reward = play_easy21()
-   update_value_func(player_history,reward)
+   value_func, scount = update_value_func(player_history,reward)
    record[game_outcome] += 1
+   outcome_history.append(game_outcome)
 #print(scount)
 #print(value_func)
 #print(record)
 
+#print(outcome_history)
+
 print("\nEasy21 - Final Record:\n")
-print("Number of Wins: ",record[2])
-print("Number of Losses: ",record[1])
-print("Number of Draws: ",record[0],'\n')
+print("Total Number of Wins: ",record[2])
+print("Total Number of Losses: ",record[1])
+print("Total Number of Draws: ",record[0],'\n')
+
+print("\n--In last", count_lag ,"plays--")
+print("Number of Wins: ",outcome_history[-count_lag:].count(2))
+print("Number of Losses: ",outcome_history[-count_lag:].count(1))
+print("Number of Draws: ",outcome_history[-count_lag:].count(0),'\n')
